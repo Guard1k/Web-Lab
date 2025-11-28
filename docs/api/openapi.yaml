@@ -1,0 +1,148 @@
+openapi: 3.0.0
+info:
+  title: ToDo API
+  version: 1.0.0
+
+paths:
+  /tasks:
+    post:
+      summary: Створити нове завдання
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Завдання успішно створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: Некоректні вхідні дані
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Отримати список усіх завдань
+      responses:
+        '200':
+          description: Список завдань
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+
+  /tasks/{id}:
+    get:
+      summary: Отримати завдання за ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Деталі завдання
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '404':
+          description: Завдання не знайдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Оновити завдання за ID (повне оновлення)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Завдання оновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '404':
+          description: Завдання не знайдено
+
+    delete:
+      summary: Видалити завдання за ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Завдання успішно видалено
+        '404':
+          description: Завдання не знайдено
+
+components:
+  schemas:
+    CreateTaskRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Купити молоко"
+      required:
+        - name
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Купити молоко і хліб"
+        status:
+          type: string
+          enum: [pending, completed]
+      required:
+        - name
+        - status
+
+    TaskResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "task-123"
+        name:
+          type: string
+          example: "Купити молоко"
+        status:
+          type: string
+          example: "pending"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "ValidationError"
+        details:
+          type: string
+          example: "Name is required"

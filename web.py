@@ -28,3 +28,15 @@ def home():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+from api.tasks_api import router as tasks_router
+
+app = Flask(__name__)
+app.register_blueprint(tasks_router, url_prefix="/tasks")
+
+@app.get("/health")
+def health():
+    return "ok", 200
+
+if __name__ == "__main__":
+    app.run(port=3000)
