@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Tasks</title>
+</head>
+<body>
+
+<h1>Task Manager</h1>
+
+<input id="taskInput" placeholder="Task name" />
+<button id="createTaskBtn">Create</button>
+
+<div id="statusBanner" style="display:none; padding: 10px; background: #ffcccc; color: red; margin-top: 10px;"></div>
+
+<script>
+    // === УСЕ ЦЕ ТИ ВСТАВЛЯЄШ — СТАРИЙ КОД МІНЯЄШ ===
+
+    function generateUUID() {
+        return crypto.randomUUID();
+    }
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    async function fetchWithResilience(url, options = {}, retries = 3) {
+        const { idempotencyKey, ...fetchOptions } = options;
+        
+        const headers = new Headers(fetchOptions.headers || {});
+        headers.set('X-Request-Id', generateUUID());
+        if (idempotencyKey) {
+            headers.set('Idempotency-Key', idempotencyKey);
+        }
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        
+        try {
+            const response = await fetch(url, { 
+                ...fetchOptions, 
+                headers, 
+                signal: controller.signal 
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) return response;
+
+            if (response.status === 429 && retries > 0) {
+                const retryAfter = response.headers.get('Retry-After') || 1;
+                updateStatus(`Перевищено ліміт запитів. Чекаємо ${retryAfter}с...`);
+                await sleep(retryAfter * 1000);
+                return fetchWithResilience(url, options, retries - 1);
+            }
+
+            if (response.status >= 500 && retries > 0) {
+                const delay = 1000 * (4 - retries) + Math.random() * 500;
+                updateStatus(`Помилка сервера. Повторна спроба...`);
+                await sleep(delay);
+                return fetchWithResilience(url, options, retries - 1);
+            }
+
+            throw new Error(`Request failed: ${response.status}`);
+
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (retries > 0) {
+                updateStatus(`Проблема з мережею. Пробуємо знову...`);
+                await sleep(1000);
+                return fetchWithResilience(url, options, retries - 1);
+            }
+            throw error;
+        }
+    }
+
+    function updateStatus(msg) {
+        const el = document.getElementById('statusBanner');
+        if (msg) {
+            el.textContent = msg;
+            el.style.display = 'block';
+        } else {
+            el.style.display = 'none';
+        }
+    }
+
+    document.getElementById('createTaskBtn').addEventListener('click', async () => {
+        const input = document.getElementById('taskInput');
+        const name = input.value;
+        if (!name) return;
+
+        const idempotencyKey = generateUUID();
+
+        try {
+            updateStatus("Зберігаємо...");
+            document.getElementById('createTaskBtn').disabled = true;
+
+            const res = await fetchWithResilience('/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+                idempotencyKey
+            });
+
+            if (res.ok) {
+                const newTask = await res.json();
+                console.log("Створено:", newTask);
+
+                input.value = '';
+                updateStatus(null);
+            }
+        } catch (e) {
+            updateStatus("Не вдалося зберегти завдання після кількох спроб.");
+        } finally {
+            document.getElementById('createTaskBtn').disabled = false;
+        }
+    });
+
+</script>
+
+</body>
+</html>
