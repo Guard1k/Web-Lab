@@ -1,3 +1,5 @@
+![CI Status](https://github.com/Guard1k/Web-Lab/actions/workflows/ci.yml/badge.svg)
+
 # Web-Lab
 
 ## АРІ документація
