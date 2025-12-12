@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, render_template
-import sqlite3
+import psycopg2
+import os
 import time
 import uuid
 import random
@@ -13,9 +14,32 @@ app.config['JSON_AS_ASCII'] = False
 
 # DB
 def get_db_connection():
-    conn = sqlite3.connect('db.sqlite3')
-    conn.row_factory = sqlite3.Row
-    return conn
+    db_url = os.environ.get("DB_URL")
+    print("Connecting to:", db_url)  # тимчасово, щоб перевірити
+    return psycopg2.connect(db_url)
+
+    #conn = psycopg2.connect(
+   #     dbname=os.getenv("POSTGRES_DB", "todo_db"),
+  #      user=os.getenv("POSTGRES_USER", "postgres"),
+ #       password=os.getenv("POSTGRES_PASSWORD", "password"),
+#        host=os.getenv("POSTGRES_HOST", "localhost"),
+#        port=os.getenv("POSTGRES_PORT", 5432)
+#    )
+ #   return conn
+ 
+def init_db():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            status TEXT DEFAULT 'pending'
+        );
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
 
 # MIDDLEWARE
 @app.before_request
@@ -96,26 +120,23 @@ def get_tasks():
 
 @app.route("/tasks", methods=["POST"])
 def create_task():
-    idempotency_key = request.headers.get("Idempotency-Key")
-
-    if not idempotency_key:
-        return {"error": "Missing Idempotency-Key"}, 400
-
-    if not hasattr(app, "idem_cache"):
-        app.idem_cache = {}
-
-    if idempotency_key in app.idem_cache:
-        return app.idem_cache[idempotency_key], 200
-
     data = request.get_json() or {}
-    try:
-        task = service.create(data)
-    except ValueError as e:
-        return {"error": str(e)}, 400
+    name = data.get("name")
+    if not name:
+        return {"error": "Name is required"}, 400
 
-    app.idem_cache[idempotency_key] = task
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO tasks (name, status) VALUES (%s, 'pending') RETURNING id, name, status;",
+        (name,)
+    )
+    task = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
 
-    return jsonify(task), 201
+    return jsonify({"id": task[0], "name": task[1], "status": task[2]}), 201
 
 
 @app.get("/health")
@@ -128,4 +149,5 @@ def health():
 
 # RUN
 if __name__ == "__main__":
-    app.run(port=3000, debug=True)
+    init_db()
+    app.run(host="0.0.0.0", port=3000, debug=True)
