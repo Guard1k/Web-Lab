@@ -1,4 +1,4 @@
-![CI Status](https://github.com/Guard1k/Web-Lab/actions/workflows/ci.yml/badge.svg)
+[![CI/CD Pipeline](https://github.com/Guard1k/Web-Lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Guard1k/Web-Lab/actions/workflows/ci.yml)
 
 # Web-Lab
 
