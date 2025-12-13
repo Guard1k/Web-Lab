@@ -18,15 +18,14 @@ def get_db_connection():
     print("Connecting to:", db_url)  # тимчасово, щоб перевірити
     return psycopg2.connect(db_url)
 
-    #conn = psycopg2.connect(
-   #     dbname=os.getenv("POSTGRES_DB", "todo_db"),
-  #      user=os.getenv("POSTGRES_USER", "postgres"),
- #       password=os.getenv("POSTGRES_PASSWORD", "password"),
+#    conn = psycopg2.connect(
+#        dbname=os.getenv("POSTGRES_DB", "todo_db"),
+#        user=os.getenv("POSTGRES_USER", "postgres"),
+#        password=os.getenv("POSTGRES_PASSWORD", "password"),
 #        host=os.getenv("POSTGRES_HOST", "localhost"),
 #        port=os.getenv("POSTGRES_PORT", 5432)
 #    )
- #   return conn
- 
+#    return conn
 def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
